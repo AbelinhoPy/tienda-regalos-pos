@@ -1,0 +1,31 @@
+{
+  "name": "tienda-regalos-server",
+  "version": "1.0.0",
+  "description": "Backend API para Tienda de Regalos y Personalizados con Multimoneda, POS y Presupuestos PDF",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npx prisma db push --skip-generate && node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "pdfmake": "^0.2.10"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.9",
+    "@types/pdfmake": "^0.2.11",
+    "prisma": "^5.19.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.2"
+  }
+}

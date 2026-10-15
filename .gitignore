@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Builds compilados
+client/dist/
+server/dist/
+
+# Variables de entorno (contienen secretos)
+.env
+.env.local
+.env.production
+server/.env
+
+# Base de datos local (se genera automáticamente en producción)
+server/prisma/dev.db
+server/prisma/dev.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
