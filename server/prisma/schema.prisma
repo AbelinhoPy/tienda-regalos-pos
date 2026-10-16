@@ -1,7 +1,7 @@
 // Prisma Schema para Tienda de Regalos & Personalizados Multimoneda con Presupuestos
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -309,4 +309,3 @@ model QuoteItem {
   imageUrl        String?        // Imagen del producto o personalizada
   sortOrder       Int            @default(0)
 }
-
