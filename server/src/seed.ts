@@ -43,7 +43,7 @@ async function main() {
       brand: 'Imprenta Creativa',
       variants: [
         {
-          size: '10,5 x 14,8 cm',
+          size: '10,5 x 14,8 cm (200 uds)',
           color: 'Full Color',
           presentation: '200 unidades',
           stock: 50,
@@ -51,7 +51,7 @@ async function main() {
           precioGs: 500000
         },
         {
-          size: '10,5 x 14,8 cm',
+          size: '10,5 x 14,8 cm (400 uds)',
           color: 'Full Color',
           presentation: '400 unidades',
           stock: 50,
@@ -67,7 +67,7 @@ async function main() {
       brand: 'Imprenta Creativa',
       variants: [
         {
-          size: '10,5 x 14,8 cm',
+          size: '10,5 x 14,8 cm (200 uds)',
           color: 'Full Color',
           presentation: '200 unidades',
           stock: 50,
@@ -75,7 +75,7 @@ async function main() {
           precioGs: 360000
         },
         {
-          size: '10,5 x 14,8 cm',
+          size: '10,5 x 14,8 cm (400 uds)',
           color: 'Full Color',
           presentation: '400 unidades',
           stock: 50,

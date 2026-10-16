@@ -1,0 +1,312 @@
+// Prisma Schema para Tienda de Regalos & Personalizados Multimoneda con Presupuestos
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Cotizaciones diarias de referencia
+model CurrencyRate {
+  id              Int      @id @default(autoincrement())
+  currency        String   // BRL o USD frente a GS
+  rateToGs        Float    // Ej: 1350 para BRL, 7500 para USD
+  officialDate    DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([currency, officialDate])
+}
+
+// 1.5. Categorías personalizables para productos
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique // Ej: Tazas Personalizadas, Termos Grabados, Agendas
+  description String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0) // Para ordenar en el frontend
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+}
+
+// 2. Ficha principal de producto (Regalos, papelería y personalizados)
+model Product {
+  id          Int              @id @default(autoincrement())
+  baseCode    String           @unique // Código o prefijo de referencia
+  name        String
+  description String?
+  categoryId  Int?             // Referencia a tabla de categorías
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  categoryName String?         // Campo temporal para compatibilidad
+  brand       String?          // Marca / Fabricante / Línea
+  imageUrl    String?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  variants    ProductVariant[]
+  quoteItems  QuoteItem[]
+}
+
+// 3. Variantes de Producto (Estándar para simples, o flexibles por tamaño, color, material, presentación)
+model ProductVariant {
+  id              Int            @id @default(autoincrement())
+  productId       Int
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  barcode         String         @unique // Código EAN/UPC para lector de barras
+  size            String         @default("Estándar") // Tamaño/Medida (Ej: Estándar, 10.5x14.8cm, 350ml, A4)
+  color           String         @default("Estándar") // Color (Ej: Estándar, Blanco, Negro, Sublimado, Grabado)
+  material        String?        // Material opcional (Cerámica, Acero Inoxidable, Madera, Vidrio)
+  presentation    String?        // Presentación opcional (200 unidades, 400 unidades, Individual, Caja regalo)
+  sku             String?        // SKU / Código de catálogo
+  
+  stock           Int            @default(0)
+  minStock        Int            @default(2) // Alerta de stock mínimo
+  
+  // Costo en Gs. registrado de la última compra con tasa real
+  costoGsReal     Float          @default(0)
+  // Precio de venta sugerido/oficial en Gs.
+  precioVentaGs   Float          @default(0)
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  purchaseItems   PurchaseItem[]
+  saleItems       SaleItem[]
+  quoteItems      QuoteItem[]
+
+  @@unique([productId, size, color])
+  @@index([barcode])
+}
+
+// 4. Módulo de Compras (con Tipo de Cambio Personalizado / Override)
+model Purchase {
+  id                   Int            @id @default(autoincrement())
+  purchaseNumber       String         @unique // Factura / Recibo proveedor
+  supplierName         String?
+  invoiceDate          DateTime       @default(now())
+  
+  currency             String         // Moneda de compra: GS, BRL, USD
+  cotizacionCompraReal Float          @default(1.0) // Tipo de cambio exacto aplicado a la compra
+  
+  totalMonedaOrigen    Float          // Total pagado en la divisa original
+  totalGsReal          Float          // Total convertido a Gs. exacto
+  
+  notes                String?
+  createdAt            DateTime       @default(now())
+
+  items                PurchaseItem[]
+}
+
+model PurchaseItem {
+  id                 Int            @id @default(autoincrement())
+  purchaseId         Int
+  purchase           Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  
+  variantId          Int
+  variant            ProductVariant @relation(fields: [variantId], references: [id])
+  
+  quantity           Int
+  costoMonedaOrigen  Float          // Costo unitario en divisa de compra
+  costoGsReal        Float          // Costo_Moneda_Origen * Cotizacion_Compra_Real
+  
+  // Precios sugeridos al momento de compra
+  margenGananciaPct  Float          @default(50.0) // Ej: 50%
+  precioVentaGs      Float          // Costo_Gs_Real * (1 + margen/100)
+}
+
+// 5. Clientes y Cuentas por Cobrar (Deudores / Fiado)
+model Customer {
+  id               Int           @id @default(autoincrement())
+  name             String
+  documentId       String?       // C.I. o RUC con DV
+  phone            String?
+  email            String?
+  creditLimitGs    Float         @default(0) // Límite de crédito asignado
+  saldoPendienteGs Float         @default(0) // Balance adeudado acumulado
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  sales            Sale[]
+  debts            Debt[]
+  debtPayments     DebtPayment[]
+  quotes           Quote[]
+
+  @@index([phone])
+}
+
+// 6. Registro de Deudas por Venta a Crédito
+model Debt {
+  id               Int           @id @default(autoincrement())
+  customerId       Int
+  customer         Customer      @relation(fields: [customerId], references: [id])
+  
+  saleId           Int?          @unique
+  sale             Sale?         @relation(fields: [saleId], references: [id])
+  
+  montoOriginalGs  Float
+  saldoRestanteGs  Float
+  status           String        @default("PENDIENTE") // PENDIENTE, PARCIAL, PAGADO, VENCIDO
+  dueDate          DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  payments         DebtPayment[]
+}
+
+// 7. Abonos / Entregas parciales de Deuda (Multimoneda)
+model DebtPayment {
+  id               Int           @id @default(autoincrement())
+  customerId       Int
+  customer         Customer      @relation(fields: [customerId], references: [id])
+  
+  debtId           Int?
+  debt             Debt?         @relation(fields: [debtId], references: [id])
+  
+  currency         String        // Moneda entregada: GS, BRL, USD
+  rateApplied      Float         // Cotización a Gs. al momento del abono
+  amountPaid       Float         // Monto en moneda entregada
+  amountAppliedGs  Float         // Monto acreditado al saldo en Gs.
+  
+  paymentMethod    String        // EFECTIVO_GS, EFECTIVO_BRL, etc.
+  notes            String?
+  paymentDate      DateTime      @default(now())
+}
+
+// 8. Registro de Ventas (POS)
+model Sale {
+  id               Int           @id @default(autoincrement())
+  invoiceNumber    String        @unique // Nro de Ticket/Comprobante
+  customerId       Int?
+  customer         Customer?     @relation(fields: [customerId], references: [id])
+  
+  paymentMethod    String        // CONTADO, CREDITO_FIADO, etc.
+  
+  // Totales en Gs (Moneda base)
+  totalVentaGs     Float
+  totalCostoGsReal Float         // Suma del costo real de los productos vendidos
+  utilidadNetaGs   Float         // totalVentaGs - totalCostoGsReal
+  
+  // Desglose de cobro recibido en caja
+  montoRecibidoGs  Float         @default(0)
+  montoRecibidoBrl Float         @default(0)
+  montoRecibidoUsd Float         @default(0)
+  cotizacionBrl    Float         @default(0)
+  cotizacionUsd    Float         @default(0)
+  vueltoGs         Float         @default(0)
+  
+  saleDate         DateTime      @default(now())
+
+  debt             Debt?
+  items            SaleItem[]
+
+  @@index([saleDate])
+}
+
+model SaleItem {
+  id               Int            @id @default(autoincrement())
+  saleId           Int
+  sale             Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  
+  variantId        Int
+  variant          ProductVariant @relation(fields: [variantId], references: [id])
+  
+  quantity         Int
+  precioUnitarioGs Float
+  costoUnitarioGs  Float          // Costo real capturado al momento de la venta
+  subtotalVentaGs  Float
+  utilidadItemGs   Float          // subtotalVentaGs - (costoUnitarioGs * quantity)
+}
+
+// 9. Arqueo y Turnos de Caja Diario
+model CashShift {
+  id               Int           @id @default(autoincrement())
+  cashierName      String
+  openedAt         DateTime      @default(now())
+  closedAt         DateTime?
+  
+  // Fondos iniciales
+  initialGs        Float         @default(0)
+  initialBrl       Float         @default(0)
+  initialUsd       Float         @default(0)
+  
+  // Cierres / Recuentos finales
+  finalGs          Float?
+  finalBrl         Float?
+  finalUsd         Float?
+  
+  status           String        @default("OPEN") // OPEN, CLOSED
+  notes            String?
+}
+
+// 10. Módulo de Presupuestos (Quotes) - No descuenta stock ni mueve caja ni genera deudas
+model Quote {
+  id              Int         @id @default(autoincrement())
+  quoteNumber     String      @unique // Ej: PPTO-000001
+  status          String      @default("BORRADOR") // BORRADOR, EMITIDO, ACEPTADO, CANCELADO
+  
+  date            DateTime    @default(now())
+  validityDays    Int         @default(8)
+  dueDate         DateTime?
+  
+  currency        String      @default("GS") // GS, USD, BRL
+  exchangeRate    Float       @default(1.0)  // Cotización aplicada frente a GS
+  
+  customerId      Int?
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  
+  // Snapshot de datos del cliente al momento de emitir
+  clientName      String      // Razón Social / Nombre
+  clientDocument  String?     // RUC o CI
+  clientAddress   String?     // Dirección
+  clientPhone     String?     // Teléfono
+  clientContact   String?     // Persona de contacto
+  
+  // Condiciones comerciales
+  introText       String?     // Texto introductorio de cortesía
+  saleCondition   String      @default("CONTADO") // CONTADO, CRÉDITO 30 DÍAS, etc.
+  paymentMethod   String?     // Ej: 50% AL CONFIRMAR Y AL FINALIZAR EL TRABAJO 50% RESTANTE
+  deliveryTime    String?     // Ej: 3 DÍAS HÁBILES
+  notes           String?     // Observaciones adicionales
+  
+  // Totales calculados en el backend
+  subtotal        Float       @default(0)
+  total           Float       @default(0)
+  totalInWords    String?     // Ej: DOS MILLONES CIEN MIL GUARANÍES
+  
+  // Metadatos
+  createdByName   String?     @default("Dpto Comercial")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  items           QuoteItem[]
+
+  @@index([date])
+  @@index([status])
+}
+
+model QuoteItem {
+  id              Int            @id @default(autoincrement())
+  quoteId         Int
+  quote           Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  
+  productId       Int?
+  product         Product?       @relation(fields: [productId], references: [id])
+  
+  variantId       Int?
+  variant         ProductVariant? @relation(fields: [variantId], references: [id])
+  
+  code            String?        // Código de producto o manual
+  description     String         // Descripción editable
+  quantity        Float          @default(1.0)
+  unitPrice       Float          @default(0.0)
+  total           Float          @default(0.0)
+  imageUrl        String?        // Imagen del producto o personalizada
+  sortOrder       Int            @default(0)
+}
+
