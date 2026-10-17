@@ -67,7 +67,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     { id: 'products', label: 'Productos & Stock', icon: Package, allowedRoles: ['ADMIN', 'VENDEDOR', 'DUENO_LOCAL'] },
     { id: 'categories', label: 'Categorías', icon: FolderOpen, allowedRoles: ['ADMIN', 'DUENO_LOCAL'] },
     { id: 'purchases', label: 'Ingreso Compras', icon: ShoppingBag, allowedRoles: ['ADMIN'] },
-    { id: 'customers', label: 'Clientes & Deudores', icon: Users, allowedRoles: ['ADMIN', 'VENDEDOR'] },
+    { id: 'customers', label: 'Clientes', icon: Users, allowedRoles: ['ADMIN', 'VENDEDOR', 'DUENO_LOCAL'] },
     { id: 'daily-sales', label: 'Ventas del Día', icon: Calendar, allowedRoles: ['ADMIN', 'DUENO_LOCAL', 'VENDEDOR'] },
     { id: 'users', label: 'Usuarios & Roles', icon: Shield, allowedRoles: ['ADMIN'] },
     { id: 'audit', label: 'Arqueo & Reportes', icon: DollarSign, allowedRoles: ['ADMIN', 'DUENO_LOCAL'] },

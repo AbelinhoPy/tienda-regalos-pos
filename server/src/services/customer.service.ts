@@ -1,6 +1,15 @@
 import { prisma } from '../prisma';
 
 export class CustomerService {
+  private static async validateDocument(documentId?: string, excludeId?: number) {
+    const normalized = documentId?.replace(/[.\s]/g, '');
+    if (!normalized) return;
+    const customers = await prisma.customer.findMany({ where: { isActive: true }, select: { id: true, documentId: true } });
+    if (customers.some(c => c.id !== excludeId && c.documentId?.replace(/[.\s]/g, '') === normalized)) {
+      throw new Error('Ya existe un cliente con ese RUC o C.I. Selecciónelo en el listado de clientes.');
+    }
+  }
+
   static async list() {
     return prisma.customer.findMany({
       where: { isActive: true },
@@ -16,6 +25,7 @@ export class CustomerService {
     creditLimitGs?: number;
   }) {
     if (!input.name?.trim()) throw new Error('El nombre es obligatorio');
+    await this.validateDocument(input.documentId);
     return prisma.customer.create({
       data: {
         name: input.name.trim(),
@@ -37,6 +47,7 @@ export class CustomerService {
   }) {
     const existing = await prisma.customer.findUnique({ where: { id } });
     if (!existing) throw new Error('Cliente no encontrado');
+    if (input.documentId !== undefined) await this.validateDocument(input.documentId, id);
     return prisma.customer.update({
       where: { id },
       data: {

@@ -4,11 +4,11 @@ import {
   HandCoins, UserCheck, Loader2, RefreshCw, Pencil, Trash2
 } from 'lucide-react';
 import { Customer, CurrencyRates, Currency } from '../../types';
+import { CustomerFormModal } from './CustomerFormModal';
 import { api } from '../../services/api';
 
 interface CustomersViewProps { rates: CurrencyRates; }
 
-const EMPTY_FORM = { name: '', documentId: '', phone: '', email: '', creditLimitGs: 1000000 };
 
 export const CustomersView: React.FC<CustomersViewProps> = ({ rates }) => {
   const [customers, setCustomers]   = useState<Customer[]>([]);
@@ -20,8 +20,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ rates }) => {
   // Modal nuevo/editar cliente
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm]             = useState(EMPTY_FORM);
-  const [saving, setSaving]         = useState(false);
 
   // Modal abono
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -60,42 +58,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ rates }) => {
   // ── Abrir modal nuevo / editar ─────────────────────────────────────────────
   const handleOpenNew = () => {
     setEditingCustomer(null);
-    setForm(EMPTY_FORM);
     setIsAddModalOpen(true);
   };
 
   const handleOpenEdit = (c: Customer) => {
     setEditingCustomer(c);
-    setForm({
-      name: c.name,
-      documentId: c.documentId || '',
-      phone: c.phone || '',
-      email: (c as any).email || '',
-      creditLimitGs: c.creditLimitGs,
-    });
     setIsAddModalOpen(true);
-  };
-
-  // ── Guardar cliente ────────────────────────────────────────────────────────
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim()) return;
-    setSaving(true);
-    try {
-      if (editingCustomer) {
-        await api.put(`/api/customers/${editingCustomer.id}`, form);
-        showToast(`Cliente ${form.name} actualizado.`);
-      } else {
-        await api.post('/api/customers', form);
-        showToast(`¡Cliente ${form.name} registrado!`);
-      }
-      setIsAddModalOpen(false);
-      fetchCustomers();
-    } catch (e: any) {
-      showToast(e.message || 'Error al guardar cliente.', 'error');
-    } finally {
-      setSaving(false);
-    }
   };
 
   // ── Eliminar (desactivar) ──────────────────────────────────────────────────
@@ -286,52 +254,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ rates }) => {
       </div>
 
       {/* ── MODAL: Nuevo / Editar Cliente ─────────────────────────────────── */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl max-w-md w-full p-6 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-              <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                {editingCustomer ? 'Editar Cliente' : 'Registrar Nuevo Cliente'}
-              </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="p-1 text-zinc-400 hover:text-zinc-600"><X className="w-5 h-5" /></button>
-            </div>
-            <form onSubmit={handleSave} className="space-y-4">
-              {[
-                { label: 'Nombre Completo *', key: 'name', type: 'text', placeholder: 'Ej: Laura Benítez', required: true },
-                { label: 'C.I. o RUC', key: 'documentId', type: 'text', placeholder: '4.123.456-7', required: false },
-                { label: 'Teléfono', key: 'phone', type: 'text', placeholder: '0981 123 456', required: false },
-                { label: 'Correo electrónico', key: 'email', type: 'email', placeholder: 'cliente@gmail.com', required: false },
-              ].map(({ label, key, type, placeholder, required }) => (
-                <div key={key}>
-                  <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">{label}</label>
-                  <input type={type} required={required} value={(form as any)[key]}
-                    onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
-                    placeholder={placeholder}
-                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl bg-slate-50 dark:bg-zinc-800 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" />
-                </div>
-              ))}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
-                  Límite de Crédito (Gs.)
-                </label>
-                <input type="number" step="50000" value={form.creditLimitGs}
-                  onChange={e => setForm(prev => ({ ...prev, creditLimitGs: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl bg-slate-50 dark:bg-zinc-800 text-sm font-bold font-mono focus:ring-2 focus:ring-indigo-500 outline-none" />
-                <span className="text-[10px] text-zinc-400">Monto máximo que se le puede fiar.</span>
-              </div>
-              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
-                <button type="button" onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold">Cancelar</button>
-                <button type="submit" disabled={saving}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2">
-                  {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  {editingCustomer ? 'Guardar cambios' : 'Registrar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {isAddModalOpen && <CustomerFormModal customer={editingCustomer} onClose={() => setIsAddModalOpen(false)} onSaved={() => { setIsAddModalOpen(false); fetchCustomers(); showToast('Cliente guardado.'); }} />}
 
       {/* ── MODAL: Abono ─────────────────────────────────────────────────── */}
       {isPaymentModalOpen && selectedCustomer && (

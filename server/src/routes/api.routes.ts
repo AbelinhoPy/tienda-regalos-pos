@@ -7,6 +7,7 @@ import { CurrencyService } from '../services/currency.service';
 import { CategoryService } from '../services/category.service';
 import { DatabaseService } from '../services/database.service';
 import { ProductService } from '../services/product.service';
+import { RucService } from '../services/ruc.service';
 import { CustomerService } from '../services/customer.service';
 import { ScannerService } from '../services/scanner.service';
 import { QuoteService } from '../services/quote.service';
@@ -316,6 +317,14 @@ apiRouter.post('/products/bulk', async (req: Request, res: Response) => {
 });
 
 // ── CLIENTES ─────────────────────────────────────────────────────────────────
+
+apiRouter.get('/customers/ruc/:ruc', async (req: Request, res: Response) => {
+  try {
+    res.json({ success: true, data: await RucService.lookup(req.params.ruc) });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
 
 apiRouter.get('/customers', async (req: Request, res: Response) => {
   try {

@@ -134,3 +134,15 @@ Acceder a: `http://localhost:3000`
 ## 📞 Soporte & Desarrollo
 Desarrollado para comercios y tiendas de personalizados en Paraguay.  
 Soporte técnico: `0993 277 410` (Ing. Abel Núñez).
+
+## Clientes y consulta de RUC
+
+- Menú Clientes: registrar y editar clientes. Caja POS permite buscar por nombre, RUC o teléfono, o registrar y seleccionar un cliente sin salir de la venta.
+- Consulta híbrida: guarda cinco de los diez grupos oficiales DNIT, según el último número del RUC ANTES del guion (0 a 4). Los grupos 5 a 9 se consultan en línea. Es aproximadamente la mitad del padrón, no exactamente el 50% de los registros.
+- Los grupos locales están en archivos JSON comprimidos independientes en server/data/ruc. No se importan a la tabla de clientes ni a la base de ventas. Solo se guarda un cliente cuando el usuario confirma el formulario. Se mantiene un grupo en memoria por vez.
+- Actualizar el padrón: ejecutar npm run ruc:update desde server (Windows con PowerShell y Node). Descarga solo los cinco grupos, valida y publica la nueva versión; si falla conserva la anterior. Los archivos históricos se retiran tras publicar la nueva versión para evitar acumulación.
+- Fuente oficial: https://www.dnit.gov.py/web/portal-institucional/listado-de-ruc-con-sus-equivalencias . La fecha de publicación se muestra junto a cada resultado. El padrón descargado no es una verificación tributaria en tiempo real.
+- La importación informa los registros antiguos con letras y las filas mal formadas que omite, sin alterar sus nombres. Un RUC no encontrado localmente intenta la consulta en línea.
+- Proveedor externo: https://ruc.sun.com.py/api-docs . La mitad remota sigue sujeta a cuota e Internet; dividir el padrón no amplía ese cupo. En caso de fallo se permite la carga manual. RUC_API_KEY configura una clave del proveedor solo en el servidor.
+- RUC_DATA_DIR permite indicar otra carpeta persistente para los archivos. El padrón comprimido está incluido en Git para que Render lo reciba en cada despliegue. Para actualizarlo, ejecutar ruc:update localmente y subir los archivos actualizados y manifest.json.
+- No requiere migración de base de datos. Reiniciar el backend y recargar la interfaz tras actualizar el programa. Pruebas: npm run build y npm run test:ruc desde server (requiere padrón descargado); npm run build desde client.

@@ -10,6 +10,7 @@ import { TicketReceiptModal } from './TicketReceiptModal';
 import { BarcodeScanner } from './BarcodeScanner';
 import { RemoteScannerModal } from '../scanner/RemoteScannerModal';
 import { playScanBeep } from '../../utils/barcode';
+import { CustomerFormModal } from '../customers/CustomerFormModal';
 import { api } from '../../services/api';
 
 const CONSUMIDOR_FINAL: Customer = {
@@ -22,6 +23,9 @@ interface PosCheckoutViewProps {
 }
 
 export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, businessInfo }) => {
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerError, setCustomerError] = useState('');
   const [catalog, setCatalog]       = useState<ProductVariant[]>([]);
   const [customers, setCustomers]   = useState<Customer[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -56,7 +60,8 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
     try {
       const data = await api.get<Customer[]>('/api/customers');
       setCustomers([CONSUMIDOR_FINAL, ...data]);
-    } catch { setCustomers([CONSUMIDOR_FINAL]); }
+      setCustomerError('');
+    } catch { setCustomerError('No se pudieron cargar los clientes. Reintente actualizar.'); }
   };
 
   useEffect(() => {
@@ -65,10 +70,10 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
   }, []);
 
   useEffect(() => {
-    if (!isCheckoutOpen && !completedSale && !showScanner) {
+    if (!isCheckoutOpen && !completedSale && !showScanner && !showCustomerForm) {
       setTimeout(() => searchRef.current?.focus(), 100);
     }
-  }, [isCheckoutOpen, completedSale, showScanner]);
+  }, [isCheckoutOpen, completedSale, showScanner, showCustomerForm]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -362,6 +367,12 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
             <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
               <UserCheck className="w-4 h-4 text-indigo-600" /> Cliente
             </label>
+            <div className="flex gap-2">
+              <input aria-label="Buscar cliente" placeholder="Buscar cliente por nombre, RUC o teléfono" value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} className="min-w-0 flex-1 px-3 py-2 border rounded-xl dark:bg-zinc-800 dark:border-zinc-700 text-sm" />
+              <button onClick={() => setShowCustomerForm(true)} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold">+ Nuevo cliente</button>
+              <button onClick={fetchCustomers} title="Actualizar clientes" aria-label="Actualizar clientes"><RefreshCw className="w-4 h-4" /></button>
+            </div>
+            {customerError && <p role="alert" className="text-xs text-red-500">{customerError}</p>}
             <select value={selectedCustomer.id}
               onChange={e => {
                 const id = Number(e.target.value);
@@ -369,9 +380,9 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
               }}
               className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-xl bg-slate-50 dark:bg-zinc-800 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
               <option value={0}>Consumidor Final</option>
-              {customers.filter(c => c.id !== 0).map(c => (
+              {customers.filter(c => c.id !== 0 && (c.id === selectedCustomer.id || [c.name, c.documentId, c.phone].some(value => value?.toLowerCase().includes(customerSearch.toLowerCase())))).map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.name}{c.saldoPendienteGs > 0 ? ` ⚠️ Debe Gs. ${c.saldoPendienteGs.toLocaleString()}` : ''}
+                  {c.name}{c.documentId ? ' · ' + c.documentId : ''}{c.saldoPendienteGs > 0 ? ` ⚠️ Debe Gs. ${c.saldoPendienteGs.toLocaleString()}` : ''}
                 </option>
               ))}
             </select>
@@ -547,6 +558,11 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
         </div>
       )}
 
+      {showCustomerForm && <CustomerFormModal onClose={() => setShowCustomerForm(false)} onSaved={customer => {
+        setCustomers(prev => [...prev.filter(c => c.id !== customer.id), customer]);
+        setSelectedCustomer(customer); setCustomerSearch(''); setShowCustomerForm(false);
+        showToast('Cliente guardado y seleccionado para esta venta.');
+      }} />}
       {showScanner && <BarcodeScanner onDetected={handleScanDetected} onClose={() => setShowScanner(false)} />}
       <RemoteScannerModal
         isOpen={showRemoteScanner}
