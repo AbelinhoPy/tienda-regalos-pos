@@ -1,4 +1,4 @@
-// Build a compact, separate reference directory from five official DNIT files.
+// Build a compact, separate reference directory from all ten official DNIT files.
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
@@ -10,7 +10,7 @@ async function build(inputDir, outputDir, updatedAt) {
   const counts = {};
   const skippedLegacy = {};
   const skippedInvalid = {};
-  for (let digit = 0; digit <= 4; digit++) {
+  for (let digit = 0; digit <= 9; digit++) {
     const records = Object.create(null);
     skippedLegacy[digit] = 0;
     skippedInvalid[digit] = 0;
@@ -32,8 +32,8 @@ async function build(inputDir, outputDir, updatedAt) {
     if (!counts[digit]) throw new Error('Archivo vacío: ' + file);
     fs.writeFileSync(path.join(target, digit + '.json.gz'), zlib.gzipSync(JSON.stringify(records), { level: 9 }));
   }
-  // Only publish a manifest once all five groups have been built successfully.
-  const manifest = { version, updatedAt, importedAt: new Date().toISOString(), source: 'DNIT', sourceUrl: 'https://www.dnit.gov.py/web/portal-institucional/listado-de-ruc-con-sus-equivalencias', localDigits: [0,1,2,3,4], counts, skippedLegacy, skippedInvalid, total: Object.values(counts).reduce((a,b) => a+b, 0) };
+  // Only publish a manifest once all ten groups have been built successfully.
+  const manifest = { version, updatedAt, importedAt: new Date().toISOString(), source: 'DNIT', sourceUrl: 'https://www.dnit.gov.py/web/portal-institucional/listado-de-ruc-con-sus-equivalencias', localDigits: [0,1,2,3,4,5,6,7,8,9], counts, skippedLegacy, skippedInvalid, total: Object.values(counts).reduce((a,b) => a+b, 0) };
   fs.writeFileSync(path.join(outputDir, 'manifest.next.json'), JSON.stringify(manifest, null, 2));
   fs.renameSync(path.join(outputDir, 'manifest.next.json'), path.join(outputDir, 'manifest.json'));
   // Retire previous downloaded snapshots after the new one is fully published.

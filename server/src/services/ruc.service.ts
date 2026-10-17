@@ -14,7 +14,6 @@ export class RucService {
   private static async localLookup(ruc: string) {
     const base = ruc.split('-')[0];
     const digit = Number(base.slice(-1));
-    if (digit > 4) return null;
     const directory = process.env.RUC_DATA_DIR || path.resolve(__dirname, '../../data/ruc');
     let manifest: Manifest;
     try {
@@ -54,7 +53,7 @@ export class RucService {
     const response = await fetch('https://ruc.sun.com.py/api/ruc/' + encodeURIComponent(ruc), {
       headers: process.env.RUC_API_KEY ? { 'X-API-Key': process.env.RUC_API_KEY } : {},
       signal: AbortSignal.timeout(10000),
-    }).catch(() => { throw new Error('Este RUC no está en la mitad local y no se pudo conectar con la consulta en línea. Puede ingresar los datos manualmente.'); });
+    }).catch(() => { throw new Error('Este RUC no figura en el padrón local y no se pudo conectar con la consulta en línea. Puede ingresar los datos manualmente.'); });
     if (response.status === 404) throw new Error('RUC no encontrado. Revise el número y el dígito verificador.');
     if (response.status === 429) throw new Error('Este RUC requiere consulta en línea y se alcanzó el cupo del proveedor. Puede cargar el cliente manualmente.');
     if (!response.ok) throw new Error('El proveedor de RUC no está disponible. Puede cargar el cliente manualmente.');

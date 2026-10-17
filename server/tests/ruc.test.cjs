@@ -5,11 +5,11 @@ const path = require('node:path');
 const zlib = require('node:zlib');
 const { RucService } = require('../dist/services/ruc.service');
 
-test('padrón local sin red, DV y consulta externa de la mitad restante', async () => {
+test('padrón completo sin red, DV y respaldo para RUC ausente', async () => {
   const directory = path.resolve(__dirname, '../data/ruc');
   const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'manifest.json'), 'utf8'));
-  assert.deepEqual(manifest.localDigits, [0,1,2,3,4]);
-  assert.ok(manifest.total > 100000);
+  assert.deepEqual(manifest.localDigits, [0,1,2,3,4,5,6,7,8,9]);
+  assert.ok(manifest.total > 2000000);
   const originalFetch = global.fetch;
   let calls = 0;
   global.fetch = async () => { calls++; throw new Error('offline'); };
@@ -26,17 +26,15 @@ test('padrón local sin red, DV y consulta externa de la mitad restante', async 
       assert.equal((await RucService.lookup(base + '-' + dv)).name, name);
       await assert.rejects(() => RucService.lookup(base + '-' + ((Number(dv) + 1) % 10)), /verificador/);
     }
-    assert.equal(calls, 0, 'Los cinco grupos locales no deben consumir consultas');
-    for (const digit of [5,6,7,8,9]) {
-      const base = '8000000' + digit;
-      global.fetch = async url => { calls++; assert.ok(url.endsWith('/' + base)); return { ok: true, json: async () => ({ name: 'Cliente de prueba', fullRuc: base + '-0', state: 'ACTIVO' }) }; };
-      assert.equal((await RucService.lookup(base)).source, 'ruc.sun.com.py');
-    }
-    assert.equal(calls, 5);
+    assert.equal(calls, 0, 'Los diez grupos locales no deben consumir consultas');
+    const missing = '999999999';
+    global.fetch = async url => { calls++; assert.ok(url.endsWith('/' + missing)); return { ok: true, json: async () => ({ name: 'Cliente de prueba', fullRuc: missing + '-0', state: 'ACTIVO' }) }; };
+    assert.equal((await RucService.lookup(missing)).source, 'ruc.sun.com.py');
+    assert.equal(calls, 1);
     global.fetch = async () => ({ status: 429, ok: false });
-    await assert.rejects(() => RucService.lookup('80000005'), /cupo/);
+    await assert.rejects(() => RucService.lookup('999999999'), /cupo/);
     global.fetch = async () => { throw new Error('offline'); };
-    await assert.rejects(() => RucService.lookup('80000005'), /manualmente/);
+    await assert.rejects(() => RucService.lookup('999999999'), /manualmente/);
     await assert.rejects(() => RucService.lookup('abc'), /válido/);
   } finally { global.fetch = originalFetch; }
 });

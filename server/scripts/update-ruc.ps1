@@ -7,7 +7,7 @@ try {
     $page = (Invoke-WebRequest -UseBasicParsing -Uri 'https://www.dnit.gov.py/web/portal-institucional/listado-de-ruc-con-sus-equivalencias' -TimeoutSec 60).Content
     $dates = [regex]::Matches($page, 'Actualizado al\s+(\d{1,2}-\d{1,2}-\d{2,4})') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique
     if (@($dates).Count -ne 1) { throw 'No se pudo determinar una fecha consistente del padrón DNIT.' }
-    foreach ($digit in 0..4) {
+    foreach ($digit in 0..9) {
         $pattern = 'href="([^"]*ruc' + $digit + '\.zip[^"]*)"'
         $match = [regex]::Match($page, $pattern)
         if (!$match.Success) { throw "Falta el archivo oficial ruc$digit.zip" }
@@ -21,7 +21,7 @@ try {
     }
     & node (Join-Path $PSScriptRoot 'build-ruc.cjs') $workRoot $outputDir $dates
     if ($LASTEXITCODE -ne 0) { throw 'La importación no se completó. El padrón anterior se conserva.' }
-    Write-Output 'Padrón actualizado. Los grupos 5 a 9 se consultan por Internet.'
+    Write-Output 'Padrón completo actualizado. Los diez grupos se consultan localmente.'
 } finally {
     $resolvedWork = [IO.Path]::GetFullPath($workRoot)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
