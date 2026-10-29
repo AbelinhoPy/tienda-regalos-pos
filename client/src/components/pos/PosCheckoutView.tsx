@@ -3,7 +3,7 @@ import {
   Search, Trash2, Plus, Minus, AlertTriangle, Banknote,
   Clock, Check, UserCheck, X, Receipt, Camera, Package,
   Filter, ChevronDown, CreditCard, ArrowRight, Zap,
-  ShoppingBag, RefreshCw, Loader2, Smartphone
+  ShoppingBag, RefreshCw, Loader2, Smartphone, FileText, Download, CheckCircle2
 } from 'lucide-react';
 import { CurrencyRates, ProductVariant, Customer, CartItem, CompletedSale, BusinessInfo } from '../../types';
 import { TicketReceiptModal } from './TicketReceiptModal';
@@ -44,6 +44,8 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null);
   const [toast, setToast]               = useState('');
   const [submitting, setSubmitting]     = useState(false);
+  const [savingQuote, setSavingQuote]   = useState(false);
+  const [savedQuoteModal, setSavedQuoteModal] = useState<any | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // ── Cargar catálogo y clientes desde la API ────────────────────────────────
@@ -246,6 +248,53 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
       alert(`Error al registrar la venta: ${e.message}`);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ── Guardar carrito como Presupuesto oficial numerado en la BD ─────────────
+  const handleSaveAsQuote = async () => {
+    if (cart.length === 0) return;
+    setSavingQuote(true);
+    try {
+      let clientName = selectedCustomer.name;
+      if (selectedCustomer.id === 0) {
+        const inputName = prompt('Ingresá el Nombre / Razón Social del cliente para el presupuesto:', 'Cliente Mostrador');
+        if (!inputName || !inputName.trim()) {
+          setSavingQuote(false);
+          return;
+        }
+        clientName = inputName.trim();
+      }
+
+      const payload = {
+        customerId: selectedCustomer.id > 0 ? selectedCustomer.id : undefined,
+        clientName,
+        clientDocument: selectedCustomer.documentId || undefined,
+        clientPhone: selectedCustomer.phone || undefined,
+        currency: 'GS',
+        validityDays: businessInfo?.quoteDefaultValidityDays || 8,
+        introText: businessInfo?.quoteIntro || undefined,
+        paymentMethod: businessInfo?.quoteDefaultPaymentTerms || undefined,
+        deliveryTime: businessInfo?.quoteDefaultDeliveryTerms || undefined,
+        status: 'EMITIDO',
+        items: cart.map((i, idx) => ({
+          productId: i.variant.productId,
+          variantId: i.variant.id,
+          code: i.variant.barcode || i.variant.sku || `P-${i.variant.id}`,
+          description: `${i.variant.productName} (${i.variant.size} · ${i.variant.color})`,
+          quantity: i.quantity,
+          unitPrice: i.customPriceGs ?? i.variant.precioVentaGs,
+          imageUrl: i.variant.imageUrl || undefined,
+          sortOrder: idx,
+        })),
+      };
+
+      const quote = await api.post<any>('/api/quotes', payload);
+      setSavedQuoteModal(quote);
+    } catch (err: any) {
+      alert(`Error al guardar presupuesto en base de datos: ${err.message}`);
+    } finally {
+      setSavingQuote(false);
     }
   };
 
@@ -468,12 +517,29 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
                 </div>
                 <span className="text-2xl font-black font-mono text-indigo-600 dark:text-indigo-400">Gs. {totalGs.toLocaleString()}</span>
               </div>
-              <button onClick={handleOpenCheckout} disabled={cart.length === 0}
-                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99]">
-                <CreditCard className="w-5 h-5" />
-                Cobrar — Gs. {totalGs.toLocaleString()}
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveAsQuote}
+                  disabled={cart.length === 0 || savingQuote}
+                  className="py-3 px-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-40"
+                  title="Guardar como Presupuesto oficial numerado en la Base de Datos"
+                >
+                  {savingQuote ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                  )}
+                  <span>{savingQuote ? 'Guardando...' : 'Guardar Presupuesto'}</span>
+                </button>
+
+                <button onClick={handleOpenCheckout} disabled={cart.length === 0}
+                  className="py-3 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center justify-center gap-1.5 transition-all active:scale-[0.99]">
+                  <CreditCard className="w-4 h-4" />
+                  <span>Cobrar (Gs. {totalGs.toLocaleString()})</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -572,6 +638,82 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({ rates, busines
         subtitle="Escaneá el QR con tu celular. Cada prenda que apuntes con la cámara del teléfono se agregará automáticamente al carrito de cobro."
       />
       {completedSale && <TicketReceiptModal sale={completedSale} businessInfo={businessInfo} onClose={() => setCompletedSale(null)} />}
+
+      {/* Modal Presupuesto Guardado con éxito desde POS */}
+      {savedQuoteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl max-w-md w-full p-6 space-y-5 animate-scale-up">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center shadow-md">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-zinc-100">
+                ¡Presupuesto Guardado en BD!
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Se ha generado el número correlativo y está registrado en la base de datos de presupuestos.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/60 space-y-2 text-xs">
+              <div className="flex justify-between items-center pb-2 border-b border-zinc-200 dark:border-zinc-700">
+                <span className="text-zinc-400 font-semibold">N° Presupuesto:</span>
+                <span className="font-mono font-extrabold text-base text-indigo-600 dark:text-indigo-400">
+                  {savedQuoteModal.quoteNumber}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-400 font-semibold">Cliente:</span>
+                <span className="font-bold text-slate-800 dark:text-zinc-200">{savedQuoteModal.clientName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-400 font-semibold">Total Presupuestado:</span>
+                <span className="font-mono font-extrabold text-slate-900 dark:text-zinc-100 text-sm">
+                  ₲ {savedQuoteModal.total?.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-1 text-[11px] text-zinc-400">
+                <span>Validez:</span>
+                <span>{savedQuoteModal.validityDays} días</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(`/api/quotes/${savedQuoteModal.id}/pdf`, '_blank');
+                }}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all"
+              >
+                <Download className="w-4 h-4" />
+                <span>Ver y Descargar PDF Oficial A4</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCart([]);
+                    setSavedQuoteModal(null);
+                    showToast(`Presupuesto ${savedQuoteModal.quoteNumber} guardado. Carrito vaciado.`);
+                  }}
+                  className="py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 font-semibold text-xs transition-colors"
+                >
+                  Vaciar Carrito
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSavedQuoteModal(null)}
+                  className="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-semibold text-xs hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
+                >
+                  Continuar en Caja
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

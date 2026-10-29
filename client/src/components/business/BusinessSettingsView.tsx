@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Save, 
@@ -12,14 +12,36 @@ import {
   Store,
   Sparkles,
   Trash2,
-  Share2
+  Share2,
+  Loader2,
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 import { BusinessInfo } from '../../types';
 
 interface BusinessSettingsViewProps {
   businessInfo: BusinessInfo;
-  onSaveBusinessInfo: (info: BusinessInfo) => void;
+  onSaveBusinessInfo: (info: BusinessInfo) => Promise<void> | void;
 }
+
+const OFFICIAL_FLORECER: BusinessInfo = {
+  name: 'Florecer',
+  legalName: 'Florecer Personalizados y Papelería',
+  ruc: '80100254-0',
+  phone: '+595 993 346 854',
+  email: 'florecerpersonalizadoscde@gmail.com',
+  address: 'Avda. Tte. Rojas Silva c/ Patricio Colman',
+  city: 'Ciudad del Este',
+  ticketFooterMessage: '¡Gracias por su preferencia! Ideas hechas realidad.',
+  logoUrl: '/florecer_logo.jpg',
+  facebook: 'Florecer Personalizados',
+  instagram: 'florecerpersonalizadoscde',
+  quoteIntro: 'Por medio de la presente, me dirijo a usted de la manera más atenta y respetuosa, para hacerle llegar nuestro presupuesto actualizado',
+  quoteDefaultValidityDays: 8,
+  quoteDefaultPaymentTerms: '50% AL CONFIRMAR Y AL FINALIZAR EL TRABAJO 50% RESTANTE',
+  quoteDefaultDeliveryTerms: '3 DÍAS HÁBILES',
+  quoteDefaultNotes: ''
+};
 
 export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
   businessInfo,
@@ -27,6 +49,13 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
 }) => {
   const [formData, setFormData] = useState<BusinessInfo>({ ...businessInfo });
   const [showToast, setShowToast] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Sincronizar si cambian los datos cargados desde el servidor
+  useEffect(() => {
+    setFormData({ ...businessInfo });
+  }, [businessInfo]);
 
   const handleChange = (field: keyof BusinessInfo, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -36,18 +65,59 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        handleChange('logoUrl', reader.result as string);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Optimizar y redimensionar el logo a max 800px para que guarde instantáneo en la BD
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.88);
+            handleChange('logoUrl', compressed);
+          } else {
+            handleChange('logoUrl', event.target?.result as string);
+          }
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleRestoreOfficial = () => {
+    if (confirm('¿Restablecer los datos de la empresa, zócalo y logo oficial de Florecer?')) {
+      setFormData({ ...OFFICIAL_FLORECER });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveBusinessInfo(formData);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 4000);
+    setIsSaving(true);
+    setErrorMessage('');
+    try {
+      await onSaveBusinessInfo(formData);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 4000);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error al guardar los datos en la base de datos.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -60,17 +130,36 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
             Datos de la Empresa & Presupuestos
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Personaliza el nombre, logo, contacto y condiciones que saldrán en los presupuestos PDF y tickets.
+            Personaliza el nombre, logo, contacto y zócalos oficiales. Guardado permanente en la nube (PostgreSQL).
           </p>
         </div>
 
-        {showToast && (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-medium flex items-center gap-2 animate-fade-in">
-            <Check className="w-4 h-4" />
-            ¡Datos de la empresa y configuración guardados con éxito!
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleRestoreOfficial}
+            className="px-3.5 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 transition-colors"
+            title="Cargar diseño oficial Florecer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Diseño Florecer</span>
+          </button>
+
+          {showToast && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-medium flex items-center gap-2 animate-fade-in">
+              <Check className="w-4 h-4" />
+              ¡Guardado exitoso en la Base de Datos!
+            </div>
+          )}
+        </div>
       </div>
+
+      {errorMessage && (
+        <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-2xl flex items-center gap-3 text-red-600 dark:text-red-400 text-xs font-semibold">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Formulario de Configuración (7 cols) */}
@@ -92,7 +181,7 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
                   <img
                     src={formData.logoUrl}
                     alt="Logo Empresa"
-                    className="w-20 h-20 rounded-xl object-contain border border-zinc-300 dark:border-zinc-700 bg-white p-1"
+                    className="w-24 h-20 rounded-xl object-contain border border-zinc-300 dark:border-zinc-700 bg-white p-1"
                   />
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">
@@ -113,7 +202,7 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
                   <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
                     Subir logo desde tu equipo
                   </span>
-                  <span className="text-[10px] text-zinc-400">PNG o JPG (fondo transparente recomendado)</span>
+                  <span className="text-[10px] text-zinc-400">PNG o JPG (fondo transparente o blanco recomendado)</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -134,20 +223,20 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
                   required
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
-                  placeholder="Ej: Florecer Personalizados"
+                  placeholder="Ej: Florecer"
                   className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl bg-slate-50 dark:bg-zinc-800 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
-                  Razón Social
+                  Razón Social / Rubro
                 </label>
                 <input
                   type="text"
                   value={formData.legalName}
                   onChange={(e) => handleChange('legalName', e.target.value)}
-                  placeholder="Ej: Florecer S.A."
+                  placeholder="Ej: Florecer Personalizados y Papelería"
                   className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl bg-slate-50 dark:bg-zinc-800 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
@@ -200,7 +289,7 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
                   type="text"
                   value={formData.city}
                   onChange={(e) => handleChange('city', e.target.value)}
-                  placeholder="Ej: Ciudad del Este - Paraguay"
+                  placeholder="Ej: Ciudad del Este"
                   className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl bg-slate-50 dark:bg-zinc-800 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
@@ -312,46 +401,60 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
             <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-2 transition-all"
+                disabled={isSaving}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-2 transition-all"
               >
-                <Save className="w-4 h-4" />
-                <span>Guardar Configuración</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Guardando en BD...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Guardar en Base de Datos</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Previsualización en Vivo de Cabecera y Presupuesto (5 cols) */}
+        {/* Previsualización en Vivo de Cabecera y Zócalo Oficial (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-indigo-600" />
-            Vista Previa de Cabecera del Presupuesto
+            Vista Previa de Cabecera & Zócalo en Vivo
           </span>
 
           <div className="p-5 rounded-3xl bg-white text-zinc-900 border border-zinc-300 shadow-xl text-xs space-y-4">
-            {/* Cabecera Superior */}
+            {/* Cabecera Superior con Barra Dorada Lateral (Diseño Oficial Florecer) */}
             <div className="flex items-start justify-between pb-3 border-b border-zinc-200">
               <div>
                 {formData.logoUrl ? (
                   <img
                     src={formData.logoUrl}
                     alt="Logo"
-                    className="h-10 object-contain rounded"
+                    className="h-12 object-contain rounded"
                   />
                 ) : (
-                  <h4 className="font-black text-lg italic text-slate-900 tracking-tight">
+                  <h4 className="font-serif font-black text-xl text-slate-900 tracking-tight text-[#102A43]">
                     {formData.name || 'Florecer'}
                   </h4>
                 )}
-                <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-bold block">
-                  Regalos Personalizados
+                <span className="text-[9px] uppercase tracking-wider text-[#C59B4E] font-extrabold block mt-0.5">
+                  PERSONALIZADOS Y PAPELERÍA
                 </span>
               </div>
 
-              <div className="text-right text-[10px] space-y-0.5 text-zinc-600 font-mono">
-                <p className="font-bold text-zinc-800">{formData.phone || '+595 993 346 854'}</p>
-                <p>{formData.address || 'Tte Rojas Silva - CDE'}</p>
-                <p>{formData.email || 'contacto@empresa.com'}</p>
+              <div className="flex items-center gap-2.5 text-right text-[10px] text-zinc-600 font-mono">
+                <div className="space-y-0.5">
+                  <p className="font-bold text-zinc-900">{formData.phone || '+595 993 346 854'}</p>
+                  <p>{formData.address ? `${formData.address} - CDE` : 'Tte Rojas Silva c/ Patricio Colman - CDE'}</p>
+                  <p className="text-[9px] text-zinc-500">{formData.email || 'florecerpersonalizadoscde@gmail.com'}</p>
+                </div>
+                {/* Barra lateral dorada */}
+                <div className="w-1 self-stretch bg-[#C59B4E] rounded-full" />
               </div>
             </div>
 
@@ -368,7 +471,7 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
 
             {/* Mini tabla ilustrativa */}
             <div className="border border-zinc-200 rounded-lg overflow-hidden text-[10px]">
-              <div className="bg-sky-100 font-bold p-1.5 flex justify-between border-b border-zinc-200 text-sky-950">
+              <div className="bg-[#D4EEF2] font-bold p-1.5 flex justify-between border-b border-zinc-200 text-sky-950">
                 <span>CÓDIGO | DESCRIPCIÓN</span>
                 <span>TOTAL</span>
               </div>
@@ -377,19 +480,42 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
                 <span className="font-mono font-bold">₲ 500.000</span>
               </div>
               <div className="p-1.5 flex justify-between border-b border-zinc-100">
-                <span>VOLANTE 10,5 X 14,8 CM 400 UDS</span>
-                <span className="font-mono font-bold">₲ 700.000</span>
+                <span>TAZA PERSONALIZADA SUBLIMADA</span>
+                <span className="font-mono font-bold">₲ 45.000</span>
               </div>
               <div className="bg-zinc-700 text-white p-1.5 flex justify-between font-bold font-mono">
                 <span>TOTAL:</span>
-                <span>₲ 1.200.000</span>
+                <span>₲ 545.000</span>
               </div>
             </div>
 
-            {/* Pie institucional */}
-            <div className="pt-2 border-t border-zinc-200 text-[9px] text-zinc-500 flex justify-between items-center">
-              <span>{formData.city || 'Ciudad del Este'} · {formData.phone || '+595 993 346 854'}</span>
-              <span className="font-bold text-indigo-600">{formData.name || 'Florecer'}</span>
+            {/* Zócalo Banner Oficial Florecer (Idéntico a imagen del cliente) */}
+            <div className="pt-2 text-[9px] text-zinc-600 bg-slate-50 p-2.5 rounded-xl border border-zinc-200 space-y-1 relative overflow-hidden">
+              <div className="flex items-center justify-between gap-2">
+                <div className="space-y-0.5 text-[8.5px]">
+                  <div className="flex items-center gap-3">
+                    <span>(f) {formData.facebook || 'Florecer Personalizados'}</span>
+                    <span>(wa) {formData.phone || '+595 993 346 854'}</span>
+                    <span className="font-bold text-zinc-800">{formData.city || 'Ciudad del Este'}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-zinc-500 text-[8px]">
+                    <span>(ig) {formData.instagram || 'florecerpersonalizadoscde'}</span>
+                    <span>{formData.email || 'florecerpersonalizadoscde@gmail.com'}</span>
+                    <span>{formData.address || 'Avda. Tte. Rojas Silva c/ Patricio Colman'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="w-[1.5px] h-7 bg-[#C59B4E]" />
+                  {formData.logoUrl ? (
+                    <img src={formData.logoUrl} alt="Logo" className="h-6 object-contain" />
+                  ) : (
+                    <span className="font-bold text-xs text-[#102A43]">Florecer</span>
+                  )}
+                </div>
+              </div>
+              {/* Franja dorada inferior */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C59B4E]" />
             </div>
           </div>
         </div>

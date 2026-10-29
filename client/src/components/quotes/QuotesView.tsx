@@ -168,6 +168,39 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ businessInfo }) => {
     }
   };
 
+  // Exportar a CSV / Excel de toda la lista de presupuestos guardados
+  const handleExportCsv = () => {
+    if (quotes.length === 0) {
+      showToast('No hay presupuestos para exportar', 'error');
+      return;
+    }
+
+    const headers = ['N° Presupuesto', 'Fecha', 'Cliente', 'RUC / CI', 'Teléfono', 'Validez (Días)', 'Moneda', 'Total', 'Estado'];
+    const rows = quotes.map((q) => [
+      q.quoteNumber,
+      q.date ? new Date(q.date).toLocaleDateString('es-PY') : '',
+      `"${(q.clientName || '').replace(/"/g, '""')}"`,
+      q.clientDocument || '',
+      q.clientPhone || '',
+      q.validityDays,
+      q.currency,
+      q.total,
+      q.status
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Base_Datos_Presupuestos_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Base de datos de presupuestos exportada a CSV/Excel exitosamente');
+  };
+
   // Estadísticas rápidas
   const stats = {
     total: quotes.length,
@@ -237,6 +270,18 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ businessInfo }) => {
             title="Actualizar lista"
           >
             <RefreshCw className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={quotes.length === 0}
+            className="px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40"
+            title="Exportar base de datos a Excel / CSV"
+          >
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span className="hidden sm:inline">Exportar Base de Datos (CSV)</span>
+            <span className="sm:hidden">Exportar</span>
           </button>
 
           <button

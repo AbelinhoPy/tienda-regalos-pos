@@ -9,7 +9,8 @@ import {
   CreditCard,
   Package,
   RefreshCw,
-  Loader2
+  Loader2,
+  FileText
 } from 'lucide-react';
 import { User, CurrencyRates, AppModule, ProductVariant, Customer } from '../../types';
 import { api } from '../../services/api';
@@ -30,7 +31,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
     deudoresTotalGs: 0,
     deudoresCount: 0,
     prendasBajoStock: 0,
-    totalPrendasStock: 0
+    totalPrendasStock: 0,
+    quotesCount: 0,
+    quotesTotalGs: 0
   });
 
   const loadDashboardData = useCallback(async () => {
@@ -38,10 +41,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
     try {
       const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date());
       
-      const [salesRes, productsRes, customersRes] = await Promise.allSettled([
+      const [salesRes, productsRes, customersRes, quotesRes] = await Promise.allSettled([
         api.get<any>(`/api/sales/daily?date=${todayStr}`),
         api.get<ProductVariant[]>('/api/products'),
         api.get<Customer[]>('/api/customers'),
+        api.get<any[]>('/api/quotes'),
       ]);
 
       let ventasHoyGs = 0;
@@ -75,6 +79,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
         deudoresTotalGs = withDebt.reduce((acc, c) => acc + (c.saldoPendienteGs || 0), 0);
       }
 
+      let quotesCount = 0;
+      let quotesTotalGs = 0;
+      if (quotesRes.status === 'fulfilled' && Array.isArray(quotesRes.value)) {
+        const qList = quotesRes.value;
+        quotesCount = qList.length;
+        quotesTotalGs = qList.reduce((acc, q) => acc + (q.currency === 'GS' ? (q.total || 0) : 0), 0);
+      }
+
       setMetrics({
         ventasHoyGs,
         costoRealGs,
@@ -83,7 +95,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
         deudoresTotalGs,
         deudoresCount,
         prendasBajoStock,
-        totalPrendasStock
+        totalPrendasStock,
+        quotesCount,
+        quotesTotalGs
       });
     } catch (e) {
       console.error('Error cargando métricas del dashboard:', e);
@@ -132,6 +146,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
             >
               <ShoppingBag className="w-4 h-4 text-indigo-600" />
               Ir al POS (Caja)
+            </button>
+            <button
+              onClick={() => onNavigate('quotes')}
+              className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs transition-all flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4 text-indigo-300" />
+              Presupuestos ({metrics.quotesCount})
             </button>
             <button
               onClick={() => onNavigate('audit')}
@@ -238,7 +259,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
           Operaciones Rápidas
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <button
             onClick={() => onNavigate('pos')}
             className="p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 hover:border-indigo-200 text-left flex items-center justify-between transition-all"
@@ -249,7 +270,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-900 dark:text-zinc-100">Nueva Venta en Caja</p>
-                <p className="text-[10px] text-zinc-400">Lector de barras, multimoneda y fiados</p>
+                <p className="text-[10px] text-zinc-400">Lector de barras, cobro multimoneda y fiados</p>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-zinc-400 shrink-0" />
+          </button>
+
+          <button
+            onClick={() => onNavigate('quotes')}
+            className="p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 hover:bg-sky-50/50 dark:hover:bg-sky-950/20 hover:border-sky-200 text-left flex items-center justify-between transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-zinc-100">Presupuestos ({metrics.quotesCount})</p>
+                <p className="text-[10px] text-zinc-400">Cotizaciones numeradas en PDF A4 oficial</p>
               </div>
             </div>
             <ArrowUpRight className="w-4 h-4 text-zinc-400 shrink-0" />
@@ -264,8 +301,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, rates
                 <Package className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-zinc-100">Prendas & Stock</p>
-                <p className="text-[10px] text-zinc-400">Variantes de talle, color y código de barras</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-zinc-100">Productos & Stock</p>
+                <p className="text-[10px] text-zinc-400">Variantes de tamaño, color y código de barras</p>
               </div>
             </div>
             <ArrowUpRight className="w-4 h-4 text-zinc-400 shrink-0" />

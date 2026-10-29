@@ -12,8 +12,28 @@ import { CustomerService } from '../services/customer.service';
 import { ScannerService } from '../services/scanner.service';
 import { QuoteService } from '../services/quote.service';
 import { PdfService } from '../services/pdf.service';
+import { BusinessService } from '../services/business.service';
 
 export const apiRouter = Router();
+
+// 0. Datos de la Empresa y Membrete / Presupuestos (Persistencia en Base de Datos)
+apiRouter.get('/business-info', async (req: Request, res: Response) => {
+  try {
+    const settings = await BusinessService.getSettings();
+    res.json({ success: true, data: settings });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+apiRouter.put('/business-info', async (req: Request, res: Response) => {
+  try {
+    const updated = await BusinessService.updateSettings(req.body);
+    res.json({ success: true, data: updated });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
 
 // 1. Cotizaciones del Día
 apiRouter.get('/currency/rates', async (req: Request, res: Response) => {
@@ -436,12 +456,14 @@ apiRouter.delete('/quotes/:id', async (req: Request, res: Response) => {
 apiRouter.get('/quotes/:id/pdf', async (req: Request, res: Response) => {
   try {
     const quote = await QuoteService.getQuoteById(Number(req.params.id));
-    let businessConfig = {};
+    const dbBusiness = await BusinessService.getSettings();
+    let businessConfig = { ...dbBusiness };
     if (req.query.business) {
       try {
-        businessConfig = JSON.parse(decodeURIComponent(req.query.business as string));
+        const parsed = JSON.parse(decodeURIComponent(req.query.business as string));
+        businessConfig = { ...businessConfig, ...parsed };
       } catch (e) {
-        // usar config por defecto
+        // usar config de BD
       }
     }
 
@@ -466,7 +488,10 @@ apiRouter.post('/quotes/preview-pdf', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Faltan datos de presupuesto para previsualizar.' });
     }
 
-    const pdfBuffer = await PdfService.generateQuotePdf(quoteData, businessInfo || {});
+    const dbBusiness = await BusinessService.getSettings();
+    const mergedConfig = { ...dbBusiness, ...(businessInfo || {}) };
+
+    const pdfBuffer = await PdfService.generateQuotePdf(quoteData, mergedConfig);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename="Preview_Presupuesto.pdf"');
     res.setHeader('Content-Length', pdfBuffer.length);

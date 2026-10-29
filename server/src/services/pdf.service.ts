@@ -202,35 +202,60 @@ export class PdfService {
     ]);
 
     // Procesar logo si está disponible
+    const resolveLogoBase64 = (logoCandidate?: string): string | null => {
+      if (logoCandidate) {
+        if (logoCandidate.startsWith('data:image/')) return logoCandidate;
+        if (fs.existsSync(logoCandidate)) {
+          try {
+            return `data:image/jpeg;base64,${fs.readFileSync(logoCandidate).toString('base64')}`;
+          } catch {}
+        }
+      }
+      const defaultLogoPaths = [
+        path.join(__dirname, '..', '..', 'public', 'uploads', 'florecer_logo.jpg'),
+        path.join(__dirname, '..', '..', '..', 'client', 'public', 'florecer_logo.jpg'),
+      ];
+      for (const p of defaultLogoPaths) {
+        if (fs.existsSync(p)) {
+          try {
+            return `data:image/jpeg;base64,${fs.readFileSync(p).toString('base64')}`;
+          } catch {}
+        }
+      }
+      return null;
+    };
+
+    const resolvedLogo = resolveLogoBase64(business.logoUrl);
+
     let headerLogo: any = {
-      text: business.name || 'florecer',
+      text: business.name || 'Florecer',
       style: 'companyLogoText',
     };
-    if (business.logoUrl && (business.logoUrl.startsWith('data:image/') || fs.existsSync(business.logoUrl))) {
+    if (resolvedLogo) {
       try {
         headerLogo = {
-          image: business.logoUrl,
-          fit: [140, 60],
+          image: resolvedLogo,
+          fit: [150, 60],
           alignment: 'left',
         };
       } catch (e) {
-        headerLogo = { text: business.name || 'florecer', style: 'companyLogoText' };
+        headerLogo = { text: business.name || 'Florecer', style: 'companyLogoText' };
       }
     }
 
     let footerLogo: any = {
-      text: business.name || 'florecer',
+      text: business.name || 'Florecer',
       style: 'companyLogoTextMini',
     };
-    if (business.logoUrl && (business.logoUrl.startsWith('data:image/') || fs.existsSync(business.logoUrl))) {
+    if (resolvedLogo) {
       try {
         footerLogo = {
-          image: business.logoUrl,
-          fit: [80, 40],
+          image: resolvedLogo,
+          fit: [95, 42],
           alignment: 'right',
         };
       } catch (e) {
-        footerLogo = { text: business.name || 'florecer', style: 'companyLogoTextMini' };
+        footerLogo = { text: business.name || 'Florecer', style: 'companyLogoTextMini' };
       }
     }
 
@@ -245,15 +270,36 @@ export class PdfService {
         color: '#111827',
       },
       content: [
-        // ── Cabecera Superior: Logo y Contacto ──
+        // ── Cabecera Superior: Logo y Contacto con Barra Dorada Lateral (Diseño Oficial Florecer) ──
         {
           columns: [
             headerLogo,
             {
-              stack: [
-                { text: companyPhone, alignment: 'right', style: 'headerContact' },
-                { text: companyAddress, alignment: 'right', style: 'headerContact' },
-                { text: companyEmail, alignment: 'right', style: 'headerContact' },
+              width: '*',
+              alignment: 'right',
+              columns: [
+                {
+                  stack: [
+                    { text: companyPhone, alignment: 'right', style: 'headerContact', bold: true },
+                    { text: `${companyAddress} - CDE`, alignment: 'right', style: 'headerContact' },
+                    { text: companyEmail, alignment: 'right', style: 'headerContact' },
+                  ],
+                },
+                {
+                  width: 8,
+                  margin: [6, 0, 0, 0],
+                  canvas: [
+                    {
+                      type: 'line',
+                      x1: 4,
+                      y1: 0,
+                      x2: 4,
+                      y2: 40,
+                      lineWidth: 2.5,
+                      lineColor: '#C59B4E',
+                    },
+                  ],
+                },
               ],
             },
           ],
@@ -434,10 +480,10 @@ export class PdfService {
           margin: [0, 10, 0, 20],
         },
 
-        // ── Pie de Página con Redes Sociales y Datos de Contacto ──
+        // ── Pie de Página: Zócalo Banner Oficial con Barra Dorada Inferior (Diseño Imagen Florecer) ──
         {
           stack: [
-            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 525, y2: 0, lineWidth: 0.6, lineColor: '#D1D5DB' }] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 525, y2: 0, lineWidth: 0.5, lineColor: '#E5E7EB' }] },
             {
               columns: [
                 // Redes y Contacto
@@ -446,31 +492,48 @@ export class PdfService {
                   stack: [
                     {
                       columns: [
-                        { text: `f  ${business.facebook || 'Florecer Personalizados'}`, width: 140, fontSize: 7 },
-                        { text: `+595 993 346 854`, width: 120, fontSize: 7 },
-                        { text: companyCity, width: '*', fontSize: 7, bold: true },
+                        { text: `(f)  ${business.facebook || 'Florecer Personalizados'}`, width: 145, fontSize: 7, color: '#1F2937' },
+                        { text: `(wa)  ${business.phone || '+595 993 346 854'}`, width: 125, fontSize: 7, color: '#1F2937' },
+                        { text: companyCity || 'Ciudad del Este', width: '*', fontSize: 7.5, bold: true, color: '#111827' },
                       ],
                       margin: [0, 4, 0, 2],
                     },
                     {
                       columns: [
-                        { text: `@  ${business.instagram || 'florecerpersonalizadoscde'}`, width: 140, fontSize: 7 },
-                        { text: companyEmail, width: 160, fontSize: 7 },
-                        { text: companyAddress, width: '*', fontSize: 6.5 },
+                        { text: `(ig)  ${business.instagram || 'florecerpersonalizadoscde'}`, width: 145, fontSize: 7, color: '#1F2937' },
+                        { text: `(email)  ${companyEmail}`, width: 165, fontSize: 6.8, color: '#1F2937' },
+                        { text: companyAddress, width: '*', fontSize: 6.5, color: '#4B5563' },
                       ],
-                      margin: [0, 2, 0, 0],
+                      margin: [0, 2, 0, 3],
+                    },
+                  ],
+                },
+                // Separador vertical dorado
+                {
+                  width: 10,
+                  canvas: [
+                    {
+                      type: 'line',
+                      x1: 5,
+                      y1: 2,
+                      x2: 5,
+                      y2: 26,
+                      lineWidth: 1.5,
+                      lineColor: '#C59B4E',
                     },
                   ],
                 },
                 // Logo Derecho
                 {
-                  width: '25%',
+                  width: '23%',
                   alignment: 'right',
                   stack: [footerLogo],
                 },
               ],
-              margin: [0, 4, 0, 0],
+              margin: [0, 3, 0, 4],
             },
+            // Zócalo inferior: Franja dorada horizontal
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 525, y2: 0, lineWidth: 2.5, lineColor: '#C59B4E' }] },
           ],
         },
       ],

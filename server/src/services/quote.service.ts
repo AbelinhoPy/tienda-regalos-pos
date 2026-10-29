@@ -219,7 +219,7 @@ export class QuoteService {
           customer: true
         }
       });
-    });
+    }, { maxWait: 10000, timeout: 25000 });
   }
 
   /**
@@ -312,7 +312,7 @@ export class QuoteService {
           customer: true
         }
       });
-    });
+    }, { maxWait: 10000, timeout: 25000 });
   }
 
   /**

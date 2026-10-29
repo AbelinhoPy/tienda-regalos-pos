@@ -310,3 +310,29 @@ model QuoteItem {
   sortOrder       Int            @default(0)
 }
 
+// 11. Configuración de Empresa y Presupuestos (Membrete, Logo, Zócalo)
+model BusinessSetting {
+  id                        Int      @id @default(autoincrement())
+  key                       String   @unique @default("default")
+  name                      String   @default("Florecer")
+  legalName                 String   @default("Florecer Personalizados y Papelería")
+  ruc                       String   @default("80100254-0")
+  phone                     String   @default("+595 993 346 854")
+  email                     String?  @default("florecerpersonalizadoscde@gmail.com")
+  address                   String   @default("Avda. Tte. Rojas Silva c/ Patricio Colman")
+  city                      String   @default("Ciudad del Este")
+  ticketFooterMessage       String?  @default("¡Gracias por su preferencia! Ideas hechas realidad.")
+  logoUrl                   String?
+  bannerUrl                 String?
+  facebook                  String?  @default("Florecer Personalizados")
+  instagram                 String?  @default("florecerpersonalizadoscde")
+  quoteIntro                String?
+  quoteDefaultValidityDays  Int      @default(8)
+  quoteDefaultPaymentTerms  String?  @default("50% AL CONFIRMAR Y AL FINALIZAR EL TRABAJO 50% RESTANTE")
+  quoteDefaultDeliveryTerms String?  @default("3 DÍAS HÁBILES")
+  quoteDefaultNotes         String?  @default("")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+

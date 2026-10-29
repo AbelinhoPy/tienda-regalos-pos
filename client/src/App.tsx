@@ -14,17 +14,18 @@ import { BusinessSettingsView } from './components/business/BusinessSettingsView
 import { MobileScannerView } from './components/scanner/MobileScannerView';
 import { QuotesView } from './components/quotes/QuotesView';
 import { User, CurrencyRates, AppModule, BusinessInfo } from './types';
+import { api } from './services/api';
 
 const DEFAULT_BUSINESS_INFO: BusinessInfo = {
-  name: 'FLORECER REGALOS PERSONALIZADOS',
-  legalName: 'Florecer Papelería Creativa S.A.',
+  name: 'Florecer',
+  legalName: 'Florecer Personalizados y Papelería',
   ruc: '80100254-0',
   phone: '+595 993 346 854',
   email: 'florecerpersonalizadoscde@gmail.com',
   address: 'Avda. Tte. Rojas Silva c/ Patricio Colman',
-  city: 'Ciudad del Este - Paraguay',
-  ticketFooterMessage: '¡Gracias por su preferencia! Diseños y regalos personalizados hechos con amor.',
-  logoUrl: '',
+  city: 'Ciudad del Este',
+  ticketFooterMessage: '¡Gracias por su preferencia! Ideas hechas realidad.',
+  logoUrl: '/florecer_logo.jpg',
   facebook: 'Florecer Personalizados',
   instagram: 'florecerpersonalizadoscde',
   quoteIntro: 'Por medio de la presente, me dirijo a usted de la manera más atenta y respetuosa, para hacerle llegar nuestro presupuesto actualizado',
@@ -51,7 +52,7 @@ export function App() {
   const [activeModule, setActiveModule] = useState<AppModule>('dashboard');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
 
-  // Datos de la empresa para el membrete de tickets y presupuestos (persistidos en localStorage)
+  // Datos de la empresa para el membrete de tickets y presupuestos (persistidos en Base de Datos + localStorage)
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(() => {
     const saved = localStorage.getItem('regalos_business_info') || localStorage.getItem('boutique_business_info');
     if (saved) {
@@ -63,6 +64,24 @@ export function App() {
     }
     return DEFAULT_BUSINESS_INFO;
   });
+
+  // Cargar configuración de la empresa directamente desde la Base de Datos
+  useEffect(() => {
+    api.get<BusinessInfo>('/api/business-info')
+      .then((data) => {
+        if (data && data.name) {
+          setBusinessInfo((prev) => ({ ...prev, ...data }));
+          try {
+            localStorage.setItem('regalos_business_info', JSON.stringify({ ...DEFAULT_BUSINESS_INFO, ...data }));
+          } catch (e) {
+            // Ignorar si el logo excede quota de localStorage
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Usando configuración local de empresa:', err);
+      });
+  }, []);
 
   // Cotizaciones globales (Paraguay frontera: R$ y US$ a Gs.)
   const [rates, setRates] = useState<CurrencyRates>({
@@ -86,9 +105,26 @@ export function App() {
     });
   };
 
-  const handleSaveBusinessInfo = (newInfo: BusinessInfo) => {
+  const handleSaveBusinessInfo = async (newInfo: BusinessInfo): Promise<void> => {
     setBusinessInfo(newInfo);
-    localStorage.setItem('regalos_business_info', JSON.stringify(newInfo));
+    try {
+      localStorage.setItem('regalos_business_info', JSON.stringify(newInfo));
+    } catch (e) {
+      // Ignorar límite de localStorage si el logo es de alta resolución
+    }
+
+    try {
+      const saved = await api.put<BusinessInfo>('/api/business-info', newInfo);
+      if (saved) {
+        setBusinessInfo(saved);
+        try {
+          localStorage.setItem('regalos_business_info', JSON.stringify(saved));
+        } catch (e) {}
+      }
+    } catch (err: any) {
+      console.error('Error al guardar datos de empresa en base de datos:', err);
+      throw err;
+    }
   };
 
   const handleLogin = (user: User) => {
