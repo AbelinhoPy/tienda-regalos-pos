@@ -64,6 +64,28 @@ export class BusinessService {
   }
 
   /**
+   * Obtiene el banner/zócalo oficial por defecto como data URL base64
+   */
+  public static getDefaultBannerBase64(): string {
+    const candidatePaths = [
+      path.join(__dirname, '..', '..', 'public', 'uploads', 'florecer_banner.jpg'),
+      path.join(__dirname, '..', '..', '..', 'client', 'public', 'florecer_banner.jpg'),
+    ];
+
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        try {
+          const buffer = fs.readFileSync(p);
+          return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+        } catch {
+          // fallback
+        }
+      }
+    }
+    return '';
+  }
+
+  /**
    * Obtiene la configuración de la empresa de la BD
    */
   public static async getSettings(): Promise<BusinessSettingsData> {
@@ -74,11 +96,13 @@ export class BusinessService {
 
       if (!record) {
         const defaultLogo = this.getDefaultLogoBase64();
+        const defaultBanner = this.getDefaultBannerBase64();
         record = await (prisma as any).businessSetting.create({
           data: {
             key: 'default',
             ...DEFAULT_SETTINGS,
             logoUrl: defaultLogo,
+            bannerUrl: defaultBanner,
           },
         });
       }
@@ -91,6 +115,18 @@ export class BusinessService {
           await (prisma as any).businessSetting.update({
             where: { key: 'default' },
             data: { logoUrl: defaultLogo },
+          }).catch(() => {});
+        }
+      }
+
+      // Si no tiene bannerUrl guardado pero existe el banner oficial de Florecer, completarlo
+      if (!record.bannerUrl) {
+        const defaultBanner = this.getDefaultBannerBase64();
+        if (defaultBanner) {
+          record.bannerUrl = defaultBanner;
+          await (prisma as any).businessSetting.update({
+            where: { key: 'default' },
+            data: { bannerUrl: defaultBanner },
           }).catch(() => {});
         }
       }
@@ -119,6 +155,7 @@ export class BusinessService {
       return {
         ...DEFAULT_SETTINGS,
         logoUrl: this.getDefaultLogoBase64(),
+        bannerUrl: this.getDefaultBannerBase64(),
       };
     }
   }

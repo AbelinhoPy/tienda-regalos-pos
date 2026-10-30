@@ -15,7 +15,8 @@ import {
   Share2,
   Loader2,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Image as ImageIcon
 } from 'lucide-react';
 import { BusinessInfo } from '../../types';
 
@@ -34,6 +35,7 @@ const OFFICIAL_FLORECER: BusinessInfo = {
   city: 'Ciudad del Este',
   ticketFooterMessage: '¡Gracias por su preferencia! Ideas hechas realidad.',
   logoUrl: '/florecer_logo.jpg',
+  bannerUrl: '/florecer_banner.jpg',
   facebook: 'Florecer Personalizados',
   instagram: 'florecerpersonalizadoscde',
   quoteIntro: 'Por medio de la presente, me dirijo a usted de la manera más atenta y respetuosa, para hacerle llegar nuestro presupuesto actualizado',
@@ -68,7 +70,6 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          // Optimizar y redimensionar el logo a max 800px para que guarde instantáneo en la BD
           const canvas = document.createElement('canvas');
           const maxDim = 800;
           let width = img.width;
@@ -91,6 +92,38 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
             handleChange('logoUrl', compressed);
           } else {
             handleChange('logoUrl', event.target?.result as string);
+          }
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxW = 1200;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxW) {
+            height = Math.round((height * maxW) / width);
+            width = maxW;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.9);
+            handleChange('bannerUrl', compressed);
+          } else {
+            handleChange('bannerUrl', event.target?.result as string);
           }
         };
         img.src = event.target?.result as string;
@@ -167,50 +200,95 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
           <form onSubmit={handleSubmit} className="p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-6">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-100 flex items-center gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
               <Store className="w-4 h-4 text-indigo-600" />
-              Información Fiscal & Comercial
+              Identidad Visual (Logo y Zócalo Oficial)
             </h3>
 
-            {/* Logo de la Empresa */}
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                Logo de la Tienda (Utilizado en la cabecera y pie de presupuestos PDF)
-              </label>
-
-              {formData.logoUrl ? (
-                <div className="flex items-center gap-4 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/60">
-                  <img
-                    src={formData.logoUrl}
-                    alt="Logo Empresa"
-                    className="w-24 h-20 rounded-xl object-contain border border-zinc-300 dark:border-zinc-700 bg-white p-1"
-                  />
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                      Logo cargado correctamente
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleChange('logoUrl', '')}
-                      className="text-xs text-red-500 hover:text-red-600 font-bold flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Quitar logo
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 rounded-2xl cursor-pointer bg-slate-50/50 dark:bg-zinc-800/30 text-center transition-colors">
-                  <Upload className="w-5 h-5 text-indigo-600 mb-1" />
-                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
-                    Subir logo desde tu equipo
-                  </span>
-                  <span className="text-[10px] text-zinc-400">PNG o JPG (fondo transparente o blanco recomendado)</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Logo de la Empresa */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                  Logo de la Tienda (Cabecera PDF)
                 </label>
-              )}
+
+                {formData.logoUrl ? (
+                  <div className="flex items-center gap-3 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/60">
+                    <img
+                      src={formData.logoUrl}
+                      alt="Logo Empresa"
+                      className="w-16 h-16 rounded-xl object-contain border border-zinc-300 dark:border-zinc-700 bg-white p-1"
+                    />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                        Logo cargado
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleChange('logoUrl', '')}
+                        className="text-xs text-red-500 hover:text-red-600 font-bold flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Quitar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 rounded-2xl cursor-pointer bg-slate-50/50 dark:bg-zinc-800/30 text-center transition-colors">
+                    <Upload className="w-5 h-5 text-indigo-600 mb-1" />
+                    <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                      Subir Logo
+                    </span>
+                    <span className="text-[10px] text-zinc-400">PNG o JPG</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Zócalo Banner Oficial */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                  Banner / Zócalo de Pie de Página
+                </label>
+
+                {formData.bannerUrl ? (
+                  <div className="flex items-center gap-3 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/60">
+                    <img
+                      src={formData.bannerUrl}
+                      alt="Zócalo Banner"
+                      className="w-24 h-16 rounded-xl object-cover border border-zinc-300 dark:border-zinc-700 bg-white"
+                    />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                        Banner Oficial
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleChange('bannerUrl', '')}
+                        className="text-xs text-red-500 hover:text-red-600 font-bold flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Quitar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 rounded-2xl cursor-pointer bg-slate-50/50 dark:bg-zinc-800/30 text-center transition-colors">
+                    <ImageIcon className="w-5 h-5 text-indigo-600 mb-1" />
+                    <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                      Subir Banner Zócalo
+                    </span>
+                    <span className="text-[10px] text-zinc-400">Diseño horizontal con redes</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleBannerUpload}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -424,7 +502,7 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
         <div className="lg:col-span-5 space-y-4">
           <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-indigo-600" />
-            Vista Previa de Cabecera & Zócalo en Vivo
+            Vista Previa del Presupuesto A4
           </span>
 
           <div className="p-5 rounded-3xl bg-white text-zinc-900 border border-zinc-300 shadow-xl text-xs space-y-4">
@@ -489,33 +567,16 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
               </div>
             </div>
 
-            {/* Zócalo Banner Oficial Florecer (Idéntico a imagen del cliente) */}
-            <div className="pt-2 text-[9px] text-zinc-600 bg-slate-50 p-2.5 rounded-xl border border-zinc-200 space-y-1 relative overflow-hidden">
-              <div className="flex items-center justify-between gap-2">
-                <div className="space-y-0.5 text-[8.5px]">
-                  <div className="flex items-center gap-3">
-                    <span>(f) {formData.facebook || 'Florecer Personalizados'}</span>
-                    <span>(wa) {formData.phone || '+595 993 346 854'}</span>
-                    <span className="font-bold text-zinc-800">{formData.city || 'Ciudad del Este'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-zinc-500 text-[8px]">
-                    <span>(ig) {formData.instagram || 'florecerpersonalizadoscde'}</span>
-                    <span>{formData.email || 'florecerpersonalizadoscde@gmail.com'}</span>
-                    <span>{formData.address || 'Avda. Tte. Rojas Silva c/ Patricio Colman'}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="w-[1.5px] h-7 bg-[#C59B4E]" />
-                  {formData.logoUrl ? (
-                    <img src={formData.logoUrl} alt="Logo" className="h-6 object-contain" />
-                  ) : (
-                    <span className="font-bold text-xs text-[#102A43]">Florecer</span>
-                  )}
-                </div>
-              </div>
-              {/* Franja dorada inferior */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C59B4E]" />
+            {/* Zócalo Banner Oficial Florecer (Gráfico Oficial con Redes Sociales y Franja Dorada) */}
+            <div className="pt-2 space-y-1">
+              <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wider">
+                Zócalo Oficial de Pie de Página (Banner):
+              </span>
+              <img
+                src={formData.bannerUrl || '/florecer_banner.jpg'}
+                alt="Banner Zócalo"
+                className="w-full rounded-lg border border-zinc-200 shadow-sm object-contain bg-white"
+              />
             </div>
           </div>
         </div>

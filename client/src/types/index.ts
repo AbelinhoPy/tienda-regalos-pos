@@ -27,6 +27,7 @@ export interface BusinessInfo {
   city: string;
   ticketFooterMessage: string;
   logoUrl?: string;
+  bannerUrl?: string;
   facebook?: string;
   instagram?: string;
   quoteIntro?: string;
