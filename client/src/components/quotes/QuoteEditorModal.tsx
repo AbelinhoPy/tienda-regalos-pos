@@ -545,9 +545,11 @@ export const QuoteEditorModal: React.FC<QuoteEditorModalProps> = ({
                             <div className="truncate pr-2">
                               <p className="font-bold truncate text-slate-800 dark:text-zinc-200">{v.productName}</p>
                               <p className="text-[10px] text-zinc-400">
+                                {v.family ? <span className="font-semibold text-amber-600 dark:text-amber-400">{v.family} › </span> : ''}
+                                {v.category ? <span>{v.category} · </span> : ''}
                                 {v.size !== 'Estándar' ? `${v.size} · ` : ''}
                                 {v.presentation ? `${v.presentation} · ` : ''}
-                                {v.barcode}
+                                <span className="font-mono">{v.barcode}</span>
                               </p>
                             </div>
                             <span className="font-mono font-bold text-indigo-600 whitespace-nowrap">

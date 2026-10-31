@@ -1,6 +1,7 @@
 export interface Category {
   id: number;
   name: string;
+  family?: string | null;
   description?: string;
   isActive: boolean;
   sortOrder: number;
@@ -10,12 +11,14 @@ export interface Category {
 
 export interface CreateCategoryInput {
   name: string;
+  family?: string;
   description?: string;
   sortOrder?: number;
 }
 
 export interface UpdateCategoryInput {
   name?: string;
+  family?: string;
   description?: string;
   isActive?: boolean;
   sortOrder?: number;
@@ -59,6 +62,7 @@ export class CategoryService {
       const category = await prisma.category.create({
         data: {
           name: input.name,
+          family: input.family || null,
           description: input.description,
           sortOrder: input.sortOrder || 0
         }
@@ -87,7 +91,13 @@ export class CategoryService {
     try {
       const category = await prisma.category.update({
         where: { id },
-        data: input
+        data: {
+          ...(input.name !== undefined && { name: input.name }),
+          ...(input.family !== undefined && { family: input.family }),
+          ...(input.description !== undefined && { description: input.description }),
+          ...(input.isActive !== undefined && { isActive: input.isActive }),
+          ...(input.sortOrder !== undefined && { sortOrder: input.sortOrder }),
+        }
       });
       
       if (!dbClient) {
@@ -130,30 +140,54 @@ export class CategoryService {
   }
 
   /**
-   * Obtener categorías predeterminadas para inicializar el sistema
+   * Obtener categorías predeterminadas para inicializar el sistema con Familias y Subdivisiones oficiales
    */
   public static async initializeDefaultCategories(dbClient?: any): Promise<void> {
     const { PrismaClient } = await import('@prisma/client');
     const prisma = dbClient || new PrismaClient();
     
     try {
-      const defaultCategories = [
-        { name: 'Tazas & Vasos Personalizados', description: 'Tazas mágicas, mugs, vasos térmicos y chop de vidrio', sortOrder: 1 },
-        { name: 'Termos & Choperas Grabadas', description: 'Termos Stanley, grabados láser y manijas artesanales', sortOrder: 2 },
-        { name: 'Remeras & Cuadros Personalizados', description: 'Remeras estampadas, bordadas y cuadros decorativos', sortOrder: 3 },
-        { name: 'Agendas & Papelería Creativa', description: 'Agendas perpetuas, cuadernos artesanales y stickers', sortOrder: 4 },
-        { name: 'Cajas de Regalo & Canastas', description: 'Cajas sorpresa para cumpleaños, fechas especiales y canastas', sortOrder: 5 },
-        { name: 'Llaveros & Accesorios', description: 'Llaveros acrílicos, metálicos y pines personalizados', sortOrder: 6 },
-        { name: 'Volantes, Folletos & Tarjetería', description: 'Impresión de volantes publicitarios, dípticos y tarjetas', sortOrder: 7 },
-        { name: 'Souvenirs & Eventos', description: 'Recuerdos para bodas, 15 años, bautismos y cumpleaños', sortOrder: 8 },
-        { name: 'Regalos Corporativos', description: 'Merchandising para empresas, kits ejecutivos y regalos de fin de año', sortOrder: 9 },
-        { name: 'Grabados Láser & Corte', description: 'Grabados en madera, cuero, metales y acrílicos', sortOrder: 10 }
+      const defaultCategories: Array<{ name: string; family: string; description: string; sortOrder: number }> = [
+        // 1. BRANDING Y PACKAGING
+        { name: 'Etiquetas', family: 'BRANDING Y PACKAGING', description: 'Etiquetas personalizadas para productos y empaques', sortOrder: 1 },
+        { name: 'Bolsas de papel', family: 'BRANDING Y PACKAGING', description: 'Bolsas kraft y papel personalizadas con logo', sortOrder: 2 },
+        { name: 'Imanes', family: 'BRANDING Y PACKAGING', description: 'Imanes publicitarios y recordatorios imantados', sortOrder: 3 },
+
+        // 2. PAPELERÍA CORPORATIVA
+        { name: 'Tarjetas personales', family: 'PAPELERÍA CORPORATIVA', description: 'Tarjetas de presentación en laminado mate, brillante o especiales', sortOrder: 4 },
+        { name: 'Tarjetas de agradecimiento', family: 'PAPELERÍA CORPORATIVA', description: 'Tarjetas postales para clientes y pedidos', sortOrder: 5 },
+        { name: 'Hojas membretadas', family: 'PAPELERÍA CORPORATIVA', description: 'Hojas A4 corporativas con membrete institucional', sortOrder: 6 },
+        { name: 'Volantes', family: 'PAPELERÍA CORPORATIVA', description: 'Volantes publicitarios simple y doble faz', sortOrder: 7 },
+        { name: 'Adhesivos/stickers', family: 'PAPELERÍA CORPORATIVA', description: 'Stickers en vinilo y papel con corte troquelado', sortOrder: 8 },
+        { name: 'Kit emprendedor', family: 'PAPELERÍA CORPORATIVA', description: 'Paquetes completos de papelería para negocios', sortOrder: 9 },
+
+        // 3. REGALOS Y MERCHANDISING
+        { name: 'Llaveros', family: 'REGALOS Y MERCHANDISING', description: 'Llaveros acrílicos, metálicos y personalizados', sortOrder: 10 },
+        { name: 'Alcancías', family: 'REGALOS Y MERCHANDISING', description: 'Alcancías personalizadas para eventos y empresas', sortOrder: 11 },
+        { name: 'Souvenirs', family: 'REGALOS Y MERCHANDISING', description: 'Recuerdos especiales para bodas, 15 años y bautismos', sortOrder: 12 },
+        { name: 'Canastas', family: 'REGALOS Y MERCHANDISING', description: 'Canastas de regalo armadas y personalizadas', sortOrder: 13 },
+        { name: 'Regalos empresariales', family: 'REGALOS Y MERCHANDISING', description: 'Kits y obsequios corporativos de fin de año y aniversarios', sortOrder: 14 },
+
+        // 4. PRODUCTOS PERSONALIZADOS
+        { name: 'Álbumes', family: 'PRODUCTOS PERSONALIZADOS', description: 'Álbumes de fotos con tapas duras personalizadas', sortOrder: 15 },
+        { name: 'Fotolibro', family: 'PRODUCTOS PERSONALIZADOS', description: 'Fotolibros impresos de alta resolución', sortOrder: 16 },
+        { name: 'Cuadros', family: 'PRODUCTOS PERSONALIZADOS', description: 'Cuadros decorativos en lienzo y marcos de madera', sortOrder: 17 },
+        { name: 'Papelería especial', family: 'PRODUCTOS PERSONALIZADOS', description: 'Agendas, planificadores y cuadernos artesanales', sortOrder: 18 },
+
+        // 5. BAZAR & ARTÍCULOS SUBLIMADOS
+        { name: 'Tazas & Vasos Personalizados', family: 'BAZAR & ARTÍCULOS SUBLIMADOS', description: 'Tazas mágicas, mugs, vasos térmicos y chop de vidrio', sortOrder: 19 },
+        { name: 'Termos & Choperas Grabadas', family: 'BAZAR & ARTÍCULOS SUBLIMADOS', description: 'Termos Stanley, grabados láser y manijas artesanales', sortOrder: 20 },
+        { name: 'Grabados Láser & Corte', family: 'BAZAR & ARTÍCULOS SUBLIMADOS', description: 'Grabados en madera, cuero, metales y acrílicos', sortOrder: 21 },
       ];
       
       for (const cat of defaultCategories) {
         await prisma.category.upsert({
           where: { name: cat.name },
-          update: {},
+          update: {
+            family: cat.family,
+            description: cat.description,
+            sortOrder: cat.sortOrder,
+          },
           create: cat
         });
       }

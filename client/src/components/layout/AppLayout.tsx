@@ -19,7 +19,8 @@ import {
   Building2,
   Calendar,
   FolderOpen,
-  FileText
+  FileText,
+  Layers
 } from 'lucide-react';
 import { User, CurrencyRates, AppModule } from '../../types';
 
@@ -65,7 +66,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     { id: 'quotes', label: 'Presupuestos', icon: FileText, allowedRoles: ['ADMIN', 'DUENO_LOCAL', 'VENDEDOR'] },
     { id: 'pos', label: 'Caja POS', icon: ShoppingCart, allowedRoles: ['ADMIN', 'VENDEDOR'] },
     { id: 'products', label: 'Productos & Stock', icon: Package, allowedRoles: ['ADMIN', 'VENDEDOR', 'DUENO_LOCAL'] },
-    { id: 'categories', label: 'Categorías', icon: FolderOpen, allowedRoles: ['ADMIN', 'DUENO_LOCAL'] },
+    { id: 'categories', label: 'Familias & Materiales', icon: Layers, allowedRoles: ['ADMIN', 'DUENO_LOCAL'] },
     { id: 'purchases', label: 'Ingreso Compras', icon: ShoppingBag, allowedRoles: ['ADMIN'] },
     { id: 'customers', label: 'Clientes', icon: Users, allowedRoles: ['ADMIN', 'VENDEDOR', 'DUENO_LOCAL'] },
     { id: 'daily-sales', label: 'Ventas del Día', icon: Calendar, allowedRoles: ['ADMIN', 'DUENO_LOCAL', 'VENDEDOR'] },

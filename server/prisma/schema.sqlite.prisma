@@ -22,7 +22,8 @@ model CurrencyRate {
 // 1.5. Categorías personalizables para productos
 model Category {
   id          Int       @id @default(autoincrement())
-  name        String    @unique // Ej: Tazas Personalizadas, Termos Grabados, Agendas
+  name        String    @unique // Ej: Tarjetas personales, Etiquetas, Llaveros (Subdivisión)
+  family      String?   // Ej: BRANDING Y PACKAGING, PAPELERÍA CORPORATIVA, REGALOS Y MERCHANDISING, PRODUCTOS PERSONALIZADOS
   description String?
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0) // Para ordenar en el frontend

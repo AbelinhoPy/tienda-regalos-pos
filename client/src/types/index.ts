@@ -42,6 +42,8 @@ export interface ProductVariant {
   productId: number;
   productName: string;
   category: string;
+  family?: string;
+  subdivision?: string;
   brand?: string;
   imageUrl?: string;
   barcode: string;

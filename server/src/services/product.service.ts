@@ -5,6 +5,8 @@ export interface VariantDto {
   productId: number;
   productName: string;
   category: string;
+  family?: string | null;
+  subdivision?: string | null;
   brand?: string | null;
   imageUrl?: string | null;
   barcode: string;
@@ -25,6 +27,8 @@ function mapVariant(v: any): VariantDto {
     productId: v.productId,
     productName: v.product.name,
     category: v.product.category?.name || v.product.categoryName || 'Sin categoría',
+    family: v.product.category?.family || null,
+    subdivision: v.product.category?.name || v.product.categoryName || null,
     brand: v.product.brand,
     imageUrl: v.product.imageUrl,
     barcode: v.barcode,
@@ -44,12 +48,17 @@ const variantInclude = {
   product: { include: { category: true } },
 };
 
-async function ensureCategory(name: string) {
+async function ensureCategory(name: string, family?: string) {
   const trimmed = (name || 'Sin categoría').trim();
   const existing = await prisma.category.findUnique({ where: { name: trimmed } });
-  if (existing) return existing;
+  if (existing) {
+    if (family && !existing.family) {
+      await prisma.category.update({ where: { id: existing.id }, data: { family } }).catch(() => {});
+    }
+    return existing;
+  }
   return prisma.category.create({
-    data: { name: trimmed, isActive: true, sortOrder: 99 },
+    data: { name: trimmed, family: family || null, isActive: true, sortOrder: 99 },
   });
 }
 
@@ -100,6 +109,7 @@ export class ProductService {
   static async createProduct(input: {
     name: string;
     category: string;
+    family?: string;
     brand?: string;
     imageUrl?: string;
     variants?: Array<{
@@ -119,7 +129,7 @@ export class ProductService {
       throw new Error('El nombre del producto es obligatorio.');
     }
 
-    const category = await ensureCategory(input.category);
+    const category = await ensureCategory(input.category, input.family);
     const baseCode = `P${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     const rawVariants = input.variants && input.variants.length > 0

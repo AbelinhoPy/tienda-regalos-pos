@@ -262,7 +262,7 @@ export class PdfService {
       try {
         headerLogo = {
           image: resolvedLogo,
-          fit: [150, 60],
+          fit: [195, 78],
           alignment: 'left',
         };
       } catch (e) {
