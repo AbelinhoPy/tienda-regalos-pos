@@ -156,9 +156,9 @@ export class PdfService {
     for (const item of quote.items) {
       const codeCell = { text: item.code || '', style: 'tableCellCode', alignment: 'center' };
       const descCell = { text: (item.description || '').toUpperCase(), style: 'tableCellDesc', alignment: 'left' };
-      const priceCell = { text: this.formatCurrency(item.unitPrice, currency), style: 'tableCell', alignment: 'right' };
-      const qtyCell = { text: item.quantity.toString(), style: 'tableCell', alignment: 'center' };
-      const totalCell = { text: this.formatCurrency(item.total, currency), style: 'tableCell', alignment: 'right' };
+      const priceCell = { text: this.formatCurrency(item.unitPrice, currency), style: 'tableCellPrice', alignment: 'right' };
+      const qtyCell = { text: item.quantity.toString(), style: 'tableCellQty', alignment: 'center' };
+      const totalCell = { text: this.formatCurrency(item.total, currency), style: 'tableCellTotal', alignment: 'right' };
 
       let imgCell: any = { text: '', style: 'tableCell', alignment: 'center' };
       if (item.imageUrl && (item.imageUrl.startsWith('data:image/') || item.imageUrl.startsWith('http') || fs.existsSync(item.imageUrl))) {
@@ -421,7 +421,7 @@ export class PdfService {
           table: {
             headerRows: 1,
             dontBreakRows: true,
-            widths: [65, '*', 65, 35, 70, 50],
+            widths: [55, '*', 65, 50, 70, 52],
             body: tableBody,
           },
           layout: {
@@ -551,7 +551,8 @@ export class PdfService {
       styles: {
         tableCellCode: {
           fontSize: 7.2,
-          margin: [0, 2, 0, 2],
+          color: '#374151',
+          margin: [0, 3, 0, 3],
         },
         companyLogoText: {
           fontSize: 22,
@@ -583,18 +584,36 @@ export class PdfService {
         tableHeader: {
           fontSize: 7.5,
           bold: true,
-          fillColor: '#D4EEF2', // Celeste claro idéntico al PDF de referencia
-          color: '#000000',
-          margin: [0, 2, 0, 2],
+          fillColor: '#0F2B56', // Azul marino corporativo oficial Florecer
+          color: '#FFFFFF',      // Blanco de alto contraste
+          margin: [0, 3, 0, 3],
         },
         tableCell: {
           fontSize: 8,
-          margin: [0, 2, 0, 2],
+          color: '#111827',
+          margin: [0, 3, 0, 3],
         },
         tableCellDesc: {
           fontSize: 7.5,
           bold: true,
-          margin: [0, 2, 0, 2],
+          color: '#111827',
+          margin: [0, 3, 0, 3],
+        },
+        tableCellPrice: {
+          fontSize: 8,
+          color: '#111827',
+          margin: [0, 3, 0, 3],
+        },
+        tableCellQty: {
+          fontSize: 8,
+          color: '#111827',
+          margin: [0, 3, 0, 3],
+        },
+        tableCellTotal: {
+          fontSize: 8,
+          bold: true,
+          color: '#111827',
+          margin: [0, 3, 0, 3],
         },
         totalLabelCell: {
           fontSize: 9,

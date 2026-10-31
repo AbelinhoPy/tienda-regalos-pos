@@ -549,7 +549,7 @@ export const BusinessSettingsView: React.FC<BusinessSettingsViewProps> = ({
 
             {/* Mini tabla ilustrativa */}
             <div className="border border-zinc-200 rounded-lg overflow-hidden text-[10px]">
-              <div className="bg-[#D4EEF2] font-bold p-1.5 flex justify-between border-b border-zinc-200 text-sky-950">
+              <div className="bg-[#0F2B56] text-white font-bold p-1.5 flex justify-between border-b border-zinc-200">
                 <span>CÓDIGO | DESCRIPCIÓN</span>
                 <span>TOTAL</span>
               </div>
